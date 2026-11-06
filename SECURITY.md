@@ -14,6 +14,29 @@ This is an agentic workflow: an LLM with file access reads untrusted web content
 
 `/apply`, `/rank`, `/scrape`, `/interview` and the skill's own `09-web-research.md` treat posting text as data, never instructions: agents are told not to follow directions embedded in postings and not to fetch URLs found inside posting text (the user-supplied posting URL is the one exception). Reviewer research starts from the company identity the user confirmed, never from links in the posting body. `/apply` Step 1 also classifies the posting's host (installed portal, known ATS apex, or unverified) before any drafting.
 
+### DeepSeek port: what changes
+
+The DeepSeek runtime is `.deepcode/`; the table below still describes the legacy `.claude/` layout, which Deep Code does not read. Three differences matter:
+
+- **Scope-based permissions, not command allowlists.** [`.deepcode/settings.json`](.deepcode/settings.json) allows `read-in-cwd`, `write-in-cwd`, `query-git-log` and `network`, asks before out-of-workspace access, deletes, or Git history changes, and denies deletes outside the workspace. The `defaultMode` is `askAll`, so an unrecognised scope prompts. Deep Code does not ship a per-command allowlist, so `tools/security_guards.py`'s `.claude` rules do not bound the Deep Code runtime.
+- **No subagent isolation for the reviewer.** Deep Code has no Agent/subagent tool. `/apply` and `/rank` run the `posting-fetcher`, `posting-scorer` and `application-reviewer` roles as separate, explicitly read-only passes in the same session. They are instructed not to edit or write, and the reviewer returns proposed edits as text, but they share the main session's tools. Treat the reviewer as a quality pass, not a security boundary; review what was fetched and written before sending an application.
+- **The robots-aware retry still applies.** `tools/fetch_page.py` remains GET-only, http(s)-only, bounded, and gated by `robots.txt` on every hop, with output refused inside the repo. Use it instead of `curl` for every page fetch.
+
+The rest of this policy - untrusted postings, the integrity gate, and the limits of instruction-level defences - applies unchanged.
+
+### Local UI
+
+The optional control center (`python3 ui/server.py`) binds only to `127.0.0.1` and has no
+authentication. Do not expose it through a tunnel, reverse proxy, or public interface: its POST
+endpoints can scrape, mark applications, and write the tracker CSV. Run it only on a trusted machine.
+
+The DuckDB file (`data/job_search.duckdb`) contains the same personal data as the tracker and
+`seen_jobs.json`; it is gitignored. The UI never sends data to a third party except when you press
+**AI generate**: that action sends the job details, posting text when fetchable, and the candidate
+profile to the DeepSeek API using the key in `~/.deepcode/settings.json` or `DEEPCODE_API_KEY`.
+Scrape, manual textbox drafts, and status updates do not call an LLM. The scrape buttons make the
+same LinkedIn/freehire requests as the CLI skills.
+
 ### Permission level
 
 Every grant the template ships, where it lives, how long it lasts, and what checks it. "Guard" is `tools/security_guards.py`, which CI runs on every PR and which fails on any entry it does not know.
@@ -37,7 +60,7 @@ Every grant the template ships, where it lives, how long it lasts, and what chec
 
 ### What this does not do
 
-- **It is not a sandbox.** Claude Code's Bash sandbox does not run on native Windows at all, and on macOS and Linux it is off by default. If you are on macOS or Linux, turning it on in your user settings is the single strongest addition you can make; nothing in this repo conflicts with it.
+- **It is not a sandbox.** Deep Code and Claude Code both run tools with your user's file permissions; neither Bash sandbox is a hard boundary on every platform. Review the files an agent writes before sending an application.
 - **Prefix rules are tripwires, not walls.** `Bash(curl -d:*)` matches a command that starts that way; `curl -sS -d` does not match it. The deny list catches the obvious shapes and makes the rest need deliberate evasion, which is a different bar from preventing it.
 - **WebFetch is unrestricted by domain.** Company research needs it, and a GET to an arbitrary host can carry data in the URL. The instruction-level rule (never fetch URLs from the posting body) is what stands between a hidden link and a fetch; the permission layer does not.
 - **`/rank` scorers still hold the rubric and the posting in one context.** Each scoring agent fetches and scores a batch, so the candidate rubric and the untrusted posting share a context that also has WebFetch. What the agent definition removes is Edit, Write and unscoped shell. Fully separating fetch from scoring would route every posting through the orchestrator, which `/rank` is built to avoid.
