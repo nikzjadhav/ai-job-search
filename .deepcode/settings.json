@@ -1,0 +1,25 @@
+{
+  "model": "deepseek-v4-pro",
+  "thinkingEnabled": true,
+  "reasoningEffort": "high",
+  "contextWindow": "1M",
+  "autoCompactWindow": "700K",
+  "telemetryEnabled": false,
+  "permissions": {
+    "allow": [
+      "read-in-cwd",
+      "write-in-cwd",
+      "query-git-log",
+      "network"
+    ],
+    "ask": [
+      "write-out-cwd",
+      "delete-in-cwd",
+      "mutate-git-log"
+    ],
+    "deny": [
+      "delete-out-cwd"
+    ],
+    "defaultMode": "askAll"
+  }
+}

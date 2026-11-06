@@ -4,15 +4,36 @@ Step-by-step instructions for getting the AI Job Search framework running.
 
 ## 1. Prerequisites
 
-### Claude Code
+### Deep Code + DeepSeek API
 
-Install Claude Code (Anthropic's CLI for Claude):
+Install [Deep Code](https://github.com/lessweb/deepcode-cli), the terminal agent this port runs on:
 
 ```bash
-npm install -g @anthropic-ai/claude-code
+npm install -g @vegamo/deepcode-cli
+deepcode --version
 ```
 
-You'll need an Anthropic API key or a Claude Pro/Team subscription. See the [Claude Code docs](https://docs.anthropic.com/en/docs/claude-code) for details.
+Create a DeepSeek API key at [platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys), add a small balance, and expose it to Deep Code. Either export it:
+
+```bash
+export DEEPCODE_API_KEY="sk-..."
+```
+
+or persist the full config in `~/.deepcode/settings.json`:
+
+```json
+{
+  "env": {
+    "MODEL": "deepseek-v4-pro",
+    "BASE_URL": "https://api.deepseek.com",
+    "API_KEY": "sk-..."
+  },
+  "thinkingEnabled": true,
+  "reasoningEffort": "high"
+}
+```
+
+The project-level [`.deepcode/settings.json`](.deepcode/settings.json) sets `deepseek-v4-pro`, a 1M context window, and scoped permissions. It contains no API key, so it is safe to commit. Use `/model` inside Deep Code to switch to `deepseek-flash` for cheaper bulk runs.
 
 ### Python
 
@@ -111,7 +132,7 @@ EOF
 
 The full MiKTeX installer bundles every CTAN package and works out of the box, but the smaller [Basic MiKTeX](https://miktex.org/download) installer (`basic-miktex-*.exe`) only ships a minimal package set and needs a couple of one-time settings before the stock templates compile.
 
-By default, MiKTeX installs missing packages on demand but pops up a GUI prompt for each one — which blocks non-interactive terminals (including Claude Code's Bash tool). Turn that into a silent auto-install instead:
+By default, MiKTeX installs missing packages on demand but pops up a GUI prompt for each one — which blocks non-interactive terminals (including Deep Code's bash tool). Turn that into a silent auto-install instead:
 
 ```powershell
 initexmf --admin --set-config-value=[MPM]AutoInstall=1
@@ -204,10 +225,10 @@ If you're outside Denmark, you can generate an equivalent search skill for your 
 
 ## 4. Run the setup interview
 
-Start Claude Code in the repository:
+Start Deep Code in the repository:
 
 ```bash
-claude
+deepcode
 ```
 
 Then run the onboarding:
@@ -216,10 +237,10 @@ Then run the onboarding:
 /setup
 ```
 
-Claude will offer three paths:
+DeepSeek will offer three paths:
 
-- **Path A (documents folder):** Add your CV, LinkedIn export, diplomas, references, or past applications under `documents/`. Claude reads and cross-references them before proposing profile updates. This is best when you have several source files.
-- **Path B (single CV import):** Share one CV/resume by mentioning the file with `@` or pasting the text. Claude extracts it and asks follow-up questions for anything missing.
+- **Path A (documents folder):** Add your CV, LinkedIn export, diplomas, references, or past applications under `documents/`. DeepSeek reads and cross-references them before proposing profile updates. This is best when you have several source files.
+- **Path B (single CV import):** Share one CV/resume by mentioning the file with `@` or pasting the text. DeepSeek extracts it and asks follow-up questions for anything missing.
 - **Path C (interview mode):** Answer structured interview questions section by section.
 
 All three paths produce the same result: fully populated profile files.
@@ -228,7 +249,7 @@ All three paths produce the same result: fully populated profile files.
 
 | File | Content |
 |------|---------|
-| `CLAUDE.md` | Your full candidate profile |
+| `DEEPSEEK.md` | Your full candidate profile |
 | `01-candidate-profile.md` | Structured education, experience, skills |
 | `02-behavioral-profile.md` | Behavioral assessment |
 | `04-job-evaluation.md` | Personalized skill match areas and career goals |
@@ -276,12 +297,12 @@ Or paste the job description directly:
 /apply [paste job posting text here]
 ```
 
-Claude will:
+DeepSeek will:
 1. Evaluate the fit against your profile
 2. Ask if you want to proceed
 3. Draft a tailored CV and cover letter
-4. Have a reviewer agent critique the drafts
-5. Revise and present the final output
+4. Run an independent reviewer pass over the drafts
+5. Revise, compile both PDFs, inspect the layout, run the ATS check, and present the final output
 
 ## 7. Compile your documents
 
@@ -343,9 +364,8 @@ Make sure Bun is installed and you ran `bun install` in each CLI directory. The 
 ### Fonts not found in cover letter
 The cover letter template expects fonts in `cover_letters/OpenFonts/fonts/`. Make sure this directory exists and contains the Lato and Raleway font files.
 
-### Stale `.claude/settings.local.json` from an older clone
-Shared Claude Code permissions now live in `.claude/settings.json`: an `allow` list scoped to the exact commands the workflow runs (each portal CLI by path, the `tools/` scripts and `salary_lookup.py`), an `ask` list that always prompts before the permission-defining files are edited or `git push` runs, and a `deny` list that blocks upload-shaped shell and reads of credential files in every mode. `SECURITY.md` has the full table. Earlier versions of this repo committed a broader `.claude/settings.local.json` that pre-approved `Bash(curl:*)`, `Bash(python:*)` and `Bash(bun:*)`. If you cloned before that change, git leaves the old file behind in your working copy, and its permissions still apply on top of `settings.json`. Delete it (or trim it to your own personal overrides):
+### Deep Code permissions
 
-```bash
-rm .claude/settings.local.json
-```
+Deep Code permissions are scope-based, not per-command. The project settings allow `read-in-cwd`, `write-in-cwd`, `query-git-log` and `network`; they ask before reads/writes outside the workspace, deletes, or Git history changes; and they deny deletes outside the workspace. The defaults are in [`.deepcode/settings.json`](.deepcode/settings.json). Use `defaultMode: "askAll"` to require confirmation for every scope not listed.
+
+If you have an old `.claude/settings.local.json` from the upstream Claude layout, it is no longer used by Deep Code. It can be deleted, but keeping `.claude/` untouched is harmless and preserves upstream compatibility.

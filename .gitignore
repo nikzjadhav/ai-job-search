@@ -121,3 +121,18 @@ company_research/*.json
 
 # Brainstorm mockups (superpowers visual companion) - never ship
 .superpowers/
+
+# Deep Code local overrides (may contain an API key - never commit)
+.deepcode/settings.local.json
+*.local.json
+
+# Deep Code / DeepSeek scratch and cache
+.deepcode/cache/
+.deepcode/tmp/
+
+# DuckDB UI database and WAL
+data/*.duckdb
+data/*.duckdb.wal
+*.duckdb
+*.duckdb.wal
+ui/.venv/
