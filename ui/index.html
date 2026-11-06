@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Search OS</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">JS</div>
+    <div>
+      <h1>Job Search OS</h1>
+      <p>Local DuckDB control center for scraping, applications, and cover letters</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span id="backend-note" class="muted small"></span>
+    <button id="refresh" class="btn btn-ghost" type="button">Refresh data</button>
+    <a class="btn btn-ghost" href="/dashboard" target="_blank" rel="noopener">Open report</a>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="stats" id="stats" aria-label="Pipeline summary"></section>
+
+  <section class="panel scrape-panel" aria-labelledby="scrape-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="scrape-title">Scrape</h2>
+        <p class="muted small">LinkedIn + freehire. No LLM calls: this is deterministic portal scraping. Results are stored in DuckDB and written back to the canonical JSON/CSV.</p>
+      </div>
+      <span id="scrape-dot" class="dot-idle" aria-hidden="true"></span>
+    </div>
+    <div id="markets" class="chips" aria-label="Markets"></div>
+    <div class="actions-row">
+      <button id="scrape-all" class="btn btn-primary" type="button">Scrape all markets</button>
+      <button id="scrape-selected" class="btn" type="button">Scrape selected</button>
+      <button id="refresh-inline" class="btn btn-ghost" type="button">Re-import files</button>
+    </div>
+    <div id="scrape-status" class="status-line" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="jobs-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="jobs-title">Roles</h2>
+        <p class="muted small" id="jobs-count">Loading…</p>
+      </div>
+    </div>
+    <div class="filters">
+      <input id="search" type="search" placeholder="Search title, company, location…" aria-label="Search roles">
+      <select id="filter-country" aria-label="Market"><option value="">All markets</option></select>
+      <select id="filter-fit" aria-label="Fit"><option value="">All fit</option></select>
+      <select id="filter-status" aria-label="Status"><option value="">All status</option></select>
+      <select id="filter-portal" aria-label="Source"><option value="">All sources</option></select>
+      <label class="filter-check"><input id="only-target" type="checkbox" checked> Target markets only</label>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="jobs-table">
+        <thead>
+          <tr><th>Role</th><th>Company</th><th>Market</th><th>Fit</th><th>Status</th><th>Posted</th><th>Source</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="jobs-body"></tbody>
+      </table>
+    </div>
+    <p id="jobs-empty" class="empty-state hidden">No roles match the filters.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="apps-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="apps-title">Applications</h2>
+        <p class="muted small">DuckDB stores the reference for every role you applied to. Status changes are model-free and also update the tracker CSV. After running <code>/apply</code> in Deep Code, click <strong>Re-import files</strong> to pull in the CV and cover-letter paths.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="apps-table">
+        <thead>
+          <tr><th>Company</th><th>Role</th><th>Applied</th><th>Status</th><th>Notes</th><th>Files</th><th>Posting</th></tr>
+        </thead>
+        <tbody id="apps-body"></tbody>
+      </table>
+    </div>
+    <div id="apps-empty" class="empty-state hidden">
+      <h3>No applications tracked yet</h3>
+      <p>Use <strong>Mark applied</strong> on a role, then advance the status when you hear back.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    Local-only UI · DuckDB <span id="db-path"></span> · data stays on this machine
+  </footer>
+</main>
+
+<dialog id="apply-dialog" class="dialog">
+  <form id="apply-form" method="dialog">
+    <div class="dialog-head">
+      <div>
+        <h2>Record application</h2>
+        <p class="muted small" id="dialog-role"></p>
+      </div>
+      <button id="dialog-close" class="icon-btn" type="button" aria-label="Close">×</button>
+    </div>
+    <input type="hidden" id="dialog-job-id">
+    <div class="form-grid">
+      <label>Status
+        <select id="dialog-status">
+          <option value="applied">Applied</option>
+          <option value="interview">Interview</option>
+          <option value="offer">Offer</option>
+          <option value="rejected">Rejected</option>
+          <option value="no_response">No response</option>
+          <option value="withdrawn">Withdrawn</option>
+          <option value="drafted">Drafted (not sent)</option>
+        </select>
+      </label>
+      <label>Applied date
+        <input id="dialog-date" type="date">
+      </label>
+      <label class="span-2">Notes
+        <textarea id="dialog-notes" rows="3" placeholder="Recruiter, referral, salary, next step…"></textarea>
+      </label>
+      <label>CV file
+        <input id="dialog-cv" type="text" placeholder="cv/main_company_role.tex">
+      </label>
+      <label class="span-2">Cover letter
+        <textarea id="dialog-cover-text" rows="14" placeholder="Write or edit the cover letter here. Saving creates documents/applications/<company>_<role>/cover_letter.txt."></textarea>
+      </label>
+    </div>
+    <div class="dialog-actions">
+      <button id="dialog-cancel" class="btn btn-ghost" type="button">Cancel</button>
+      <button class="btn btn-primary" type="submit">Save application</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/app.js" defer></script>
+</body>
+</html>
